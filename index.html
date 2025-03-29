@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandala Creator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 900px;
+        }
+        
+        .canvas-container {
+            position: relative;
+            margin: 20px 0;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 50%;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            background: white;
+            touch-action: none;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        
+        button {
+            padding: 8px 16px;
+            background: #4A90E2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #3A80D2;
+        }
+        
+        label {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        input[type="color"], input[type="range"] {
+            margin: 5px;
+        }
+        
+        .color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+        }
+        
+        .color-swatch {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .color-swatch.active {
+            border-color: #333;
+        }
+        
+        .symmetry-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+        }
+        
+        .instructions {
+            max-width: 600px;
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        
+        @media (max-width: 600px) {
+            .canvas-container {
+                width: 90vw !important;
+                height: 90vw !important;
+            }
+            
+            canvas {
+                width: 100% !important;
+                height: 100% !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mandala Creator</h1>
+        <div class="instructions">
+            <p>Create beautiful mandalas by drawing! Your strokes will be mirrored in a symmetrical pattern.</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>Stroke Color</label>
+                <input type="color" id="colorPicker" value="#4A90E2">
+                <div class="color-palette" id="colorPalette"></div>
+            </div>
+            
+            <div class="control-group">
+                <label>Stroke Width: <span id="brushSizeValue">5</span>px</label>
+                <input type="range" id="brushSize" min="1" max="20" value="5">
+            </div>
+            
+            <div class="control-group">
+                <label>Symmetry Lines: <span id="symmetryValue">8</span></label>
+                <input type="range" id="symmetryLines" min="2" max="24" value="8">
+                <div class="symmetry-options">
+                    <button class="symmetry-preset" data-value="4">4</button>
+                    <button class="symmetry-preset" data-value="8">8</button>
+                    <button class="symmetry-preset" data-value="12">12</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="mandalaCanvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button id="clearButton">Clear Canvas</button>
+            <button id="saveButton">Save Mandala</button>
+            <button id="undoButton">Undo Last Stroke</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('mandalaCanvas');
+            const ctx = canvas.getContext('2d');
+            const canvasContainer = document.getElementById('canvasContainer');
+            const colorPicker = document.getElementById('colorPicker');
+            const brushSize = document.getElementById('brushSize');
+            const brushSizeValue = document.getElementById('brushSizeValue');
+            const symmetryLines = document.getElementById('symmetryLines');
+            const symmetryValue = document.getElementById('symmetryValue');
+            const clearButton = document.getElementById('clearButton');
+            const saveButton = document.getElementById('saveButton');
+            const undoButton = document.getElementById('undoButton');
+            const colorPalette = document.getElementById('colorPalette');
+            
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            let pathHistory = [];
+            let currentPath = [];
+            
+            // Set initial canvas size
+            function setupCanvas() {
+                const size = Math.min(window.innerWidth * 0.8, 500);
+                canvas.width = size;
+                canvas.height = size;
+                canvasContainer.style.width = `${size}px`;
+                canvasContainer.style.height = `${size}px`;
+                
+                // Clear canvas with white background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw guidelines for symmetry
+                drawSymmetryGuides();
+            }
+            
+            // Setup color palette with some nice colors
+            const colors = [
+                '#4A90E2', '#50E3C2', '#B8E986', '#F8E71C', 
+                '#F5A623', '#D0021B', '#9013FE', '#7ED321',
+                '#000000', '#333333', '#666666', '#999999'
+            ];
+            
+            colors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.classList.add('color-swatch');
+                swatch.style.backgroundColor = color;
+                swatch.addEventListener('click', () => {
+                    colorPicker.value = color;
+                    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                    swatch.classList.add('active');
+                });
+                colorPalette.appendChild(swatch);
+            });
+            
+            // Mark the initial color as active
+            colorPalette.firstChild.classList.add('active');
+            
+            // Drawing functions
+            function startDrawing(e) {
+                isDrawing = true;
+                
+                // Get coordinates relative to canvas
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                lastX = x;
+                lastY = y;
+                
+                // Start a new path for this stroke
+                currentPath = [{
+                    type: 'start',
+                    x: x,
+                    y: y,
+                    color: colorPicker.value,
+                    width: brushSize.value
+                }];
+                
+                drawMandalaPoint(x, y);
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                // Get coordinates relative to canvas
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // Add this point to the current path
+                currentPath.push({
+                    type: 'line',
+                    x0: lastX,
+                    y0: lastY,
+                    x1: x,
+                    y1: y,
+                    color: colorPicker.value,
+                    width: brushSize.value
+                });
+                
+                drawMandalaLine(lastX, lastY, x, y);
+                
+                lastX = x;
+                lastY = y;
+            }
+            
+            function endDrawing() {
+                if (!isDrawing) return;
+                isDrawing = false;
+                
+                // Save this path to the history
+                if (currentPath.length > 0) {
+                    pathHistory.push(currentPath);
+                    currentPath = [];
+                }
+            }
+            
+            function drawMandalaPoint(x, y) {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                
+                // Draw original point
+                ctx.beginPath();
+                ctx.arc(x, y, brushSize.value / 2, 0, Math.PI * 2);
+                ctx.fillStyle = colorPicker.value;
+                ctx.fill();
+                
+                // Draw symmetric points
+                const numLines = parseInt(symmetryLines.value);
+                const angleIncrement = (Math.PI * 2) / numLines;
+                
+                // Calculate vector from center
+                const dx = x - centerX;
+                const dy = y - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+                
+                for (let i = 1; i < numLines; i++) {
+                    const newAngle = angle + angleIncrement * i;
+                    const newX = centerX + Math.cos(newAngle) * distance;
+                    const newY = centerY + Math.sin(newAngle) * distance;
+                    
+                    ctx.beginPath();
+                    ctx.arc(newX, newY, brushSize.value / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = colorPicker.value;
+                    ctx.fill();
+                }
+            }
+            
+            function drawMandalaLine(x0, y0, x1, y1) {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                
+                // Draw original line
+                ctx.beginPath();
+                ctx.moveTo(x0, y0);
+                ctx.lineTo(x1, y1);
+                ctx.strokeStyle = colorPicker.value;
+                ctx.lineWidth = brushSize.value;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+                
+                // Draw symmetric lines
+                const numLines = parseInt(symmetryLines.value);
+                const angleIncrement = (Math.PI * 2) / numLines;
+                
+                // Calculate vectors from center
+                const dx0 = x0 - centerX;
+                const dy0 = y0 - centerY;
+                const distance0 = Math.sqrt(dx0 * dx0 + dy0 * dy0);
+                const angle0 = Math.atan2(dy0, dx0);
+                
+                const dx1 = x1 - centerX;
+                const dy1 = y1 - centerY;
+                const distance1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+                const angle1 = Math.atan2(dy1, dx1);
+                
+                for (let i = 1; i < numLines; i++) {
+                    const newAngle0 = angle0 + angleIncrement * i;
+                    const newX0 = centerX + Math.cos(newAngle0) * distance0;
+                    const newY0 = centerY + Math.sin(newAngle0) * distance0;
+                    
+                    const newAngle1 = angle1 + angleIncrement * i;
+                    const newX1 = centerX + Math.cos(newAngle1) * distance1;
+                    const newY1 = centerY + Math.sin(newAngle1) * distance1;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(newX0, newY0);
+                    ctx.lineTo(newX1, newY1);
+                    ctx.strokeStyle = colorPicker.value;
+                    ctx.lineWidth = brushSize.value;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                }
+            }
+            
+            function drawSymmetryGuides() {
+                // Clear the canvas first
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.max(Math.min(centerX, centerY) - 10, 1);
+                
+                // Draw a light circle for the mandala boundary
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // Draw symmetry lines
+                const numLines = parseInt(symmetryLines.value);
+                const angleIncrement = (Math.PI * 2) / numLines;
+                
+                ctx.beginPath();
+                for (let i = 0; i < numLines; i++) {
+                    const angle = i * angleIncrement;
+                    const x = centerX + Math.cos(angle) * radius;
+                    const y = centerY + Math.sin(angle) * radius;
+                    
+                    ctx.moveTo(centerX, centerY);
+                    ctx.lineTo(x, y);
+                }
+                ctx.strokeStyle = '#f0f0f0';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // Redraw all paths
+                redrawPaths();
+            }
+            
+            function redrawPaths() {
+                // Redraw all paths from history
+                pathHistory.forEach(path => {
+                    path.forEach(point => {
+                        if (point.type === 'start') {
+                            // Just set up for the next lines
+                            lastX = point.x;
+                            lastY = point.y;
+                        } else if (point.type === 'line') {
+                            // Draw the line with its original properties
+                            ctx.beginPath();
+                            ctx.moveTo(point.x0, point.y0);
+                            ctx.lineTo(point.x1, point.y1);
+                            ctx.strokeStyle = point.color;
+                            ctx.lineWidth = point.width;
+                            ctx.lineCap = 'round';
+                            ctx.stroke();
+                            
+                            // Draw symmetric lines
+                            const centerX = canvas.width / 2;
+                            const centerY = canvas.height / 2;
+                            const numLines = parseInt(symmetryLines.value);
+                            const angleIncrement = (Math.PI * 2) / numLines;
+                            
+                            // Calculate vectors from center
+                            const dx0 = point.x0 - centerX;
+                            const dy0 = point.y0 - centerY;
+                            const distance0 = Math.sqrt(dx0 * dx0 + dy0 * dy0);
+                            const angle0 = Math.atan2(dy0, dx0);
+                            
+                            const dx1 = point.x1 - centerX;
+                            const dy1 = point.y1 - centerY;
+                            const distance1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+                            const angle1 = Math.atan2(dy1, dx1);
+                            
+                            for (let i = 1; i < numLines; i++) {
+                                const newAngle0 = angle0 + angleIncrement * i;
+                                const newX0 = centerX + Math.cos(newAngle0) * distance0;
+                                const newY0 = centerY + Math.sin(newAngle0) * distance0;
+                                
+                                const newAngle1 = angle1 + angleIncrement * i;
+                                const newX1 = centerX + Math.cos(newAngle1) * distance1;
+                                const newY1 = centerY + Math.sin(newAngle1) * distance1;
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(newX0, newY0);
+                                ctx.lineTo(newX1, newY1);
+                                ctx.strokeStyle = point.color;
+                                ctx.lineWidth = point.width;
+                                ctx.lineCap = 'round';
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                });
+            }
+            
+            // Event listeners
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', endDrawing);
+            canvas.addEventListener('mouseout', endDrawing);
+            
+            // Touch support
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            });
+            
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            });
+            
+            canvas.addEventListener('touchend', function() {
+                const mouseEvent = new MouseEvent('mouseup');
+                canvas.dispatchEvent(mouseEvent);
+            });
+            
+            // UI controls
+            brushSize.addEventListener('input', function() {
+                brushSizeValue.textContent = this.value;
+            });
+            
+            symmetryLines.addEventListener('input', function() {
+                symmetryValue.textContent = this.value;
+                drawSymmetryGuides();
+            });
+            
+            document.querySelectorAll('.symmetry-preset').forEach(button => {
+                button.addEventListener('click', function() {
+                    const value = this.getAttribute('data-value');
+                    symmetryLines.value = value;
+                    symmetryValue.textContent = value;
+                    drawSymmetryGuides();
+                });
+            });
+            
+            clearButton.addEventListener('click', function() {
+                pathHistory = [];
+                drawSymmetryGuides();
+            });
+            
+            saveButton.addEventListener('click', function() {
+                const link = document.createElement('a');
+                link.download = 'mandala.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+            
+            undoButton.addEventListener('click', function() {
+                if (pathHistory.length > 0) {
+                    pathHistory.pop();
+                    drawSymmetryGuides();
+                }
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                setupCanvas();
+            });
+            
+            // Initialize
+            setupCanvas();
+        });
+    </script>
+</body>
+</html>
