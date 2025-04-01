@@ -621,10 +621,10 @@
 
     <!-- Final Screen -->
     <section class="final-screen" id="finalScreen">
-        <h2>Your mandala is complete.<br>Would you like to send it as a blessing to the world?"</h2>
+        <h2>Your mandala is complete.<br>Would you like to send it as a blessing to the world?</h2>
         
         <div class="final-mandala">
-            <canvas id="finalMandalaCanvas" width="300" height="300"></canvas>
+            <canvas id="finalMandalaCanvas" class= "sand-mandala-canvas" width="300" height="300"></canvas>
             <div class="glow"></div>
         </div>
         
@@ -720,7 +720,7 @@
         const levels = [
             { title: "Self", description: "Firstly, we send love to ourselves." },
             { title: "Loved ones", description: "Secondly, we send love to our loved ones." },
-            { title: "Neutral others", description: "Thirdly, we send love to neutral others." },
+            { title: "Difficult person", description: "Thirdly, we send love to difficult person." },
             { title: "All beings", description: "Finally, we send love to all beings." }
         ];
         
@@ -892,12 +892,12 @@
         const colorMeaning = document.querySelector('.color-meaning');
         
         const colorSymbols = [
-            { color: '#ffffff', name: 'white', meaning: 'purity, innocence, and the primordial being' },
-            { color: '#3498db', name: 'blue', meaning: 'wisdom, compassion, and feminine energies' },
-            { color: '#f1c40f', name: 'yellow', meaning: 'earthly wisdom, illumination, and the sun' },
-            { color: '#e74c3c', name: 'red', meaning: 'passion, strength, vitality, and fire' },
-            { color: '#2ecc71', name: 'green', meaning: 'healing, nature, balance, and the earth' },
-            { color: '#111111', name: 'black', meaning: 'the void or emptiness' }
+            { color: '#ffffff', name: 'white', meaning: 'purity' },
+            { color: '#3498db', name: 'blue', meaning: 'wisdom' },
+            { color: '#f1c40f', name: 'yellow', meaning: 'illumination' },
+            { color: '#e74c3c', name: 'red', meaning: 'passion' },
+            { color: '#2ecc71', name: 'green', meaning: 'healing' },
+            { color: '#111111', name: 'black', meaning: 'void' }
         ];
         
         // Create color swatches
